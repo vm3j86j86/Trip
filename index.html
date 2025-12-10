@@ -337,8 +337,6 @@
                              @click="openFlightModal(idx)"
                              class="bg-gray-50 p-3 rounded-xl relative group cursor-pointer hover:bg-gray-100 border border-transparent hover:border-soft-brown/20 transition-all">
                              
-                            <!-- 已移除垃圾桶按鈕 -->
-
                             <div class="flex justify-between items-center">
                                 <div class="text-center w-16">
                                     <div class="text-lg font-bold">{{ flight.depCode }}</div>
@@ -382,8 +380,6 @@
                              @click="openHotelModal(idx)"
                              class="relative group border-b border-dashed border-gray-100 pb-4 last:border-0 last:pb-0 cursor-pointer hover:bg-gray-50/50 p-2 -mx-2 rounded-lg transition-colors">
                             
-                            <!-- 已移除垃圾桶按鈕 -->
-
                             <div class="flex justify-between items-start pr-8">
                                 <div>
                                     <span class="font-bold text-lg block">{{ hotel.name }}</span>
@@ -489,7 +485,7 @@
                             </button>
                             <span :class="{'line-through text-gray-400': item.done}">{{ item.text }}</span>
                         </div>
-                        <button @click="deleteItem(item)" class="text-gray-300 hover:text-red-400">
+                        <button @click="deleteShoppingItem(item)" class="text-gray-300 hover:text-red-400">
                             <i class="ph-fill ph-trash"></i>
                         </button>
                     </div>
@@ -765,7 +761,7 @@
                     </div>
 
                     <div class="flex gap-3 mt-6">
-                        <button v-if="isEditingItem" @click="deleteItem" class="flex-1 py-3 rounded-xl border border-red-200 text-red-400 font-bold text-sm hover:bg-red-50">刪除</button>
+                        <button v-if="isEditingItem" @click="deleteModalItem" class="flex-1 py-3 rounded-xl border border-red-200 text-red-400 font-bold text-sm hover:bg-red-50">刪除</button>
                         <button @click="saveItem" class="flex-[2] py-3 rounded-xl bg-soft-brown text-white font-bold text-sm shadow-lg shadow-soft-brown/30">{{ isEditingItem ? '儲存變更' : '確認新增' }}</button>
                     </div>
 
@@ -1138,7 +1134,7 @@
                         saveData();
                     }
                 };
-                const deleteItem = () => {
+                const deleteModalItem = () => {
                      // 通用刪除 (用於 Modal 內)
                     if (state.itemModalType === 'flight') {
                         deleteFlight(state.editingItemIndex);
@@ -1217,7 +1213,7 @@
                     item.done = !item.done;
                     saveData();
                 };
-                const deleteItemFromList = (item) => {
+                const deleteShoppingItem = (item) => {
                     state.data.shoppingList = state.data.shoppingList.filter(i => i.id !== item.id);
                     saveData();
                 };
@@ -1282,10 +1278,10 @@
                     categorizedChecklist, progressPercentage, progressText,
                     triggerHeaderUpload, handleHeaderChange, triggerEventUpload, handleEventImageChange,
                     openSettingsModal, saveSettings, toggleCurrency,
-                    openFlightModal, openHotelModal, saveItem, deleteFlight, deleteHotel, deleteItem,
+                    openFlightModal, openHotelModal, saveItem, deleteFlight, deleteHotel, deleteModalItem,
                     openAddModal, openEditModal, closeModal: () => state.showModal = false, saveEvent, deleteEvent,
                     addChecklistItem, toggleChecklistItem, deleteChecklistItem,
-                    addItem, toggleItemDone, deleteItem: deleteItemFromList,
+                    addItem, toggleItemDone, deleteShoppingItem,
                     addExpense, removeExpense, getCurrencyTotal,
                     cycleWeather, getMapLink, copyText, getWeatherIcon, getWeatherName, getTransportIcon, getTransportName,
                     openZoomModal: (img) => state.zoomedImage = img
