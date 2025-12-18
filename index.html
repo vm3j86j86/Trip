@@ -632,11 +632,11 @@
             </div>
         </transition>
 
-        <!-- 設定/編輯 Modal -->
+        <!-- 設定/編輯 Modal (加入匯出/匯入) -->
         <transition name="modal">
             <div v-if="showSettingsModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showSettingsModal = false"></div>
-                <div class="bg-white rounded-3xl w-full max-w-sm p-6 relative z-10 shadow-2xl">
+                <div class="bg-white rounded-3xl w-full max-w-sm p-6 relative z-10 shadow-2xl overflow-y-auto max-h-[80vh]">
                     <h3 class="text-xl font-bold text-soft-brown mb-4 text-center">旅行設定</h3>
                     
                     <div class="space-y-5">
@@ -669,6 +669,24 @@
                                     {{ c }}
                                 </button>
                             </div>
+                        </div>
+
+                         <!-- 新增：資料分享區塊 -->
+                         <div class="border-t border-gray-100 pt-4">
+                            <label class="text-xs font-bold text-gray-500 ml-1 mb-2 block">資料備份與分享</label>
+                            <div class="flex gap-3">
+                                <button @click="exportData" class="flex-1 py-2 rounded-lg bg-blue-50 text-blue-500 text-xs font-bold border border-blue-100 hover:bg-blue-100 transition flex items-center justify-center gap-1">
+                                    <i class="ph-bold ph-download-simple"></i> 匯出行程檔案
+                                </button>
+                                <button @click="$refs.importInput.click()" class="flex-1 py-2 rounded-lg bg-green-50 text-green-500 text-xs font-bold border border-green-100 hover:bg-green-100 transition flex items-center justify-center gap-1">
+                                    <i class="ph-bold ph-upload-simple"></i> 匯入行程檔案
+                                </button>
+                                <input type="file" ref="importInput" @change="importData" accept=".json" class="hidden">
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-2 leading-tight">
+                                * 匯出會下載一個 .json 檔案，可傳給朋友。<br>
+                                * 朋友在他們的手機/電腦上匯入該檔案即可。
+                            </p>
                         </div>
                     </div>
 
@@ -855,6 +873,7 @@
                 const headerInput = ref(null);
                 const eventFileInput = ref(null);
                 const eventListRef = ref(null);
+                const importInput = ref(null);
                 let sortableInstance = null;
 
                 const state = reactive({
@@ -953,6 +972,49 @@
                         settings: state.settings,
                         data: state.data
                     }));
+                };
+
+                // Export Function
+                const exportData = () => {
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                        settings: state.settings, 
+                        data: state.data
+                    }));
+                    const downloadAnchorNode = document.createElement('a');
+                    downloadAnchorNode.setAttribute("href", dataStr);
+                    const safeTitle = state.settings.title.replace(/[^a-z0-9\u4e00-\u9fa5]/gi, '_');
+                    downloadAnchorNode.setAttribute("download", `${safeTitle}_backup.json`);
+                    document.body.appendChild(downloadAnchorNode);
+                    downloadAnchorNode.click();
+                    downloadAnchorNode.remove();
+                };
+
+                // Import Function
+                const importData = (event) => {
+                    const file = event.target.files[0];
+                    if(!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const parsed = JSON.parse(e.target.result);
+                            // Simple structure check
+                            if(parsed.data && parsed.settings) {
+                                if(confirm('匯入將會覆蓋目前的行程資料，確定要匯入嗎？')) {
+                                    state.settings = parsed.settings;
+                                    state.data = parsed.data;
+                                    saveData();
+                                    alert('匯入成功！');
+                                    window.location.reload(); 
+                                }
+                            } else {
+                                alert('檔案格式錯誤，請確認選擇的是正確的備份檔。');
+                            }
+                        } catch(err) { 
+                            console.error(err); 
+                            alert('讀取失敗，檔案可能已損壞。'); 
+                        }
+                    };
+                    reader.readAsText(file);
                 };
 
                 const initItinerary = (days) => {
@@ -1272,12 +1334,12 @@
 
                 return {
                     ...toRefs(state),
-                    headerInput, eventFileInput, eventListRef,
+                    headerInput, eventFileInput, eventListRef, importInput,
                     tabs, editingEvent, transportOptions,
                     dateRangeString, getDayDateString, currentDayData,
                     categorizedChecklist, progressPercentage, progressText,
                     triggerHeaderUpload, handleHeaderChange, triggerEventUpload, handleEventImageChange,
-                    openSettingsModal, saveSettings, toggleCurrency,
+                    openSettingsModal, saveSettings, toggleCurrency, exportData, importData,
                     openFlightModal, openHotelModal, saveItem, deleteFlight, deleteHotel, deleteModalItem,
                     openAddModal, openEditModal, closeModal: () => state.showModal = false, saveEvent, deleteEvent,
                     addChecklistItem, toggleChecklistItem, deleteChecklistItem,
@@ -1291,5 +1353,4 @@
     </script>
 </body>
 </html>
-
 
