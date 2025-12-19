@@ -44,6 +44,7 @@
             background-color: #FDFBF7;
             user-select: none; 
             -webkit-user-select: none;
+            -webkit-touch-callout: none; /* 禁止長按跳出選單 */
         }
         body::-webkit-scrollbar {
             display: none;
@@ -128,12 +129,17 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        /* 優化拖曳時的樣式 */
         .sortable-ghost {
             opacity: 0.4;
             background-color: #F3E9D2;
         }
         .sortable-drag {
             cursor: grabbing;
+            background-color: #FFF;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transform: scale(1.02);
+            opacity: 1 !important;
         }
         .custom-checkbox input:checked + div {
             background-color: #8D7B68;
@@ -242,7 +248,12 @@
                         <div class="absolute left-[9px] top-2 bottom-4 w-[2px] bg-accent-beige rounded-full z-0"></div>
 
                         <div ref="eventListRef" class="space-y-6 relative z-10">
-                            <div v-for="(item, i) in currentDayData.events" :key="item.id || i" class="flex gap-4 relative group cursor-grab active:cursor-grabbing">
+                            <!-- 重要修改：key 必須是唯一的 id，不能是 index (i) -->
+                            <div v-for="(item, i) in currentDayData.events" 
+                                 :key="item.id" 
+                                 :data-id="item.id"
+                                 class="flex gap-4 relative group cursor-grab active:cursor-grabbing touch-manipulation">
+                                
                                 <div class="z-10 mt-1 relative">
                                     <div class="w-4 h-4 rounded-full bg-cream-bg border-4 border-soft-brown flex items-center justify-center z-10">
                                     </div>
@@ -924,7 +935,7 @@
                     }
                 });
 
-                const editingEvent = reactive({ title: '', time: '', location: '', desc: '', note: '', image: null, link: '', transport: null });
+                const editingEvent = reactive({ id: null, title: '', time: '', location: '', desc: '', note: '', image: null, link: '', transport: null });
                 
                 const tabs = [
                     { id: 'schedule', name: '行程', icon: 'ph-fill ph-calendar-check' },
@@ -953,9 +964,19 @@
                     if (saved) {
                         try {
                             const parsed = JSON.parse(saved);
-                            // 合併設定，確保新欄位存在
                             state.settings = { ...state.settings, ...parsed.settings };
                             state.data = { ...state.data, ...parsed.data };
+                            
+                            // *** 修正：確保舊資料有 ID ***
+                            if (state.data.itinerary) {
+                                state.data.itinerary.forEach(day => {
+                                    if(day.events) {
+                                        day.events.forEach(evt => {
+                                            if(!evt.id) evt.id = Date.now() + Math.random().toString(36).substr(2, 9);
+                                        });
+                                    }
+                                });
+                            }
                         } catch(e) { console.error('Load error', e); }
                     } else {
                         // 初次載入，初始化行程與檢查清單
@@ -1031,7 +1052,7 @@
                     state.data.itinerary = newItinerary;
                 };
 
-                // Sortable JS 初始化
+                // Sortable JS 初始化 (修正配置)
                 const initSortable = () => {
                     if (sortableInstance) sortableInstance.destroy();
                     if (eventListRef.value) {
@@ -1041,7 +1062,12 @@
                             delayOnTouchOnly: true, 
                             ghostClass: 'sortable-ghost',
                             dragClass: 'sortable-drag',
+                            // *** 修正：手機拖曳優化 ***
+                            forceFallback: true, // 使用自定義拖曳影像，避免原生瀏覽器怪異行為
+                            fallbackTolerance: 5, // 容許手指移動 5px 仍算長按，解決"長按沒反應"
+                            touchStartThreshold: 5, // 觸控判定閾值
                             onEnd: (evt) => {
+                                // 重新排序資料
                                 const item = state.data.itinerary[state.currentDayIndex].events.splice(evt.oldIndex, 1)[0];
                                 state.data.itinerary[state.currentDayIndex].events.splice(evt.newIndex, 0, item);
                                 saveData();
@@ -1209,7 +1235,7 @@
                 // 事件 (Event) CRUD
                 const openAddModal = () => {
                     state.isEditing = false;
-                    Object.assign(editingEvent, { title: '', time: '', location: '', desc: '', note: '', image: null, link: '', transport: null });
+                    Object.assign(editingEvent, { id: null, title: '', time: '', location: '', desc: '', note: '', image: null, link: '', transport: null });
                     state.showModal = true;
                 };
                 const openEditModal = (index) => {
@@ -1223,7 +1249,10 @@
                     if (state.isEditing) {
                         state.data.itinerary[state.currentDayIndex].events[state.editingIndex] = { ...editingEvent };
                     } else {
-                        state.data.itinerary[state.currentDayIndex].events.push({ ...editingEvent });
+                        // *** 修正：新事件必須有 ID ***
+                        const newEvent = { ...editingEvent };
+                        if(!newEvent.id) newEvent.id = Date.now() + Math.random().toString(36).substr(2, 9);
+                        state.data.itinerary[state.currentDayIndex].events.push(newEvent);
                     }
                     saveData();
                     state.showModal = false;
